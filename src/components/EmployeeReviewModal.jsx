@@ -52,7 +52,7 @@ export function EmployeeReviewModal({ open = true, comparison, records, onClose 
 
     const monthlyHeaders = [
       'Month', 'Attendance %', 'Late %', 'Late Days', 'Early Leave',
-      'Avg Late (min)', 'Total Hours',
+      'Avg Late (min)', 'Total Hours', 'Avg Hours',
     ]
     const monthlyRows = comparison.monthly.map((m) => [
       formatMonth(m.month),
@@ -62,6 +62,7 @@ export function EmployeeReviewModal({ open = true, comparison, records, onClose 
       m.available ? m.earlyLeave : '',
       m.available ? m.avgLateMinutes : '',
       m.available ? (m.totalWorkedHours ?? '') : '',
+      m.available ? (m.avgWorkedHours ?? '') : '',
     ])
 
     const dailyHeaders = [
@@ -120,7 +121,7 @@ export function EmployeeReviewModal({ open = true, comparison, records, onClose 
         </div>
 
         {/* Month-by-month comparison */}
-        <section>
+        <section className="rounded-xl border border-slate-200 bg-surface p-4 shadow-sm">
           <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">
             <CalendarDays className="h-4 w-4 text-brand" />
             Month-by-Month Comparison
@@ -135,6 +136,7 @@ export function EmployeeReviewModal({ open = true, comparison, records, onClose 
                 <Table.Th align="right">Early Leave</Table.Th>
                 <Table.Th align="right">Avg Late</Table.Th>
                 <Table.Th align="right">Total Hours</Table.Th>
+                <Table.Th align="right">Avg Hours</Table.Th>
               </Table.Row>
             </Table.Head>
             <Table.Body>
@@ -164,13 +166,14 @@ export function EmployeeReviewModal({ open = true, comparison, records, onClose 
                       {m.avgLateMinutes ? `${m.avgLateMinutes}m` : '0m'}
                     </Table.Td>
                     <Table.Td align="right">{m.totalWorkedHours ?? '—'}</Table.Td>
+                    <Table.Td align="right">{m.avgWorkedHours ?? '—'}</Table.Td>
                   </Table.Row>
                 ) : (
                   <Table.Row key={m.month} className="opacity-50">
                     <Table.Td className="font-medium text-ink-soft">
                       {formatMonth(m.month)}
                     </Table.Td>
-                    <Table.Td align="right" colSpan={6} className="text-ink-faint">
+                    <Table.Td align="right" colSpan={7} className="text-ink-faint">
                       — no records —
                     </Table.Td>
                   </Table.Row>
@@ -181,7 +184,7 @@ export function EmployeeReviewModal({ open = true, comparison, records, onClose 
         </section>
 
         {/* Daily attendance history */}
-        <section>
+        <section className="rounded-xl border border-slate-200 bg-surface p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
             <h4 className="flex items-center gap-2 text-sm font-semibold text-ink">
               <Clock className="h-4 w-4 text-brand" />
@@ -251,17 +254,17 @@ export function EmployeeReviewModal({ open = true, comparison, records, onClose 
             </Table>
           )}
         </section>
-      </div>
-      footer={
-        <>
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-3">
           <Button variant="secondary" size="sm" onClick={onClose}>
             Close
           </Button>
           <Button size="sm" leftIcon={Download} onClick={handleExport}>
             Export Report
           </Button>
-        </>
-      }
+        </div>
+      </div>
     </Modal>
   )
 }

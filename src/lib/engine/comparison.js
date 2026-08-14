@@ -23,6 +23,7 @@ const COMPARE_FIELDS = [
   'scheduledWorkingDays',
   'avgLateMinutes',
   'totalWorkedHours',
+  'avgWorkedHours',
 ]
 
 /**
@@ -83,7 +84,7 @@ function pickFields(s) {
 function emptyFields() {
   const out = {}
   for (const f of COMPARE_FIELDS) {
-    out[f] = f === 'totalWorkedHours' ? null : 0
+    out[f] = f === 'totalWorkedHours' || f === 'avgWorkedHours' ? null : 0
   }
   return out
 }
