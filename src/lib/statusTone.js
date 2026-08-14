@@ -4,6 +4,7 @@
  */
 export function statusToTone(status) {
   const map = {
+    'Present': 'success',
     'On Time': 'success',
     'Late': 'warning',
     'Early Leave': 'purple',

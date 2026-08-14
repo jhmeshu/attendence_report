@@ -34,6 +34,7 @@ export function buildReport(records, ruleOverrides = {}) {
   const { flaggedEmployees, threshold } = detectHighLate(summaries, {
     reportingMonth,
     threshold: ruleOverrides.highLateThreshold,
+    excludedDepartments: ruleOverrides.reviewExcludedDepartments,
   })
 
   // Phase 6 — historical comparison for flagged employees only.

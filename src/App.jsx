@@ -1,11 +1,26 @@
-import { useState } from 'react'
-import { AlertTriangle, Users, Table2, Upload as UploadIcon, Settings } from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
 import { AppShell } from './components/layout/AppShell.jsx'
 import { AttendanceProvider, useAttendance } from './store/attendanceContext.jsx'
-import { Dashboard } from './pages/Dashboard.jsx'
-import { Upload } from './pages/Upload.jsx'
-import { Placeholder } from './pages/Placeholder.jsx'
 import { formatMonth } from './lib/csv'
+
+// Pages are code-split so the chart-heavy Dashboard (recharts) loads as its
+// own chunk instead of bloating the initial bundle (Phase 14: performance).
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'))
+const Review = lazy(() => import('./pages/Review.jsx'))
+const Records = lazy(() => import('./pages/Records.jsx'))
+const Employees = lazy(() => import('./pages/Employees.jsx'))
+const Upload = lazy(() => import('./pages/Upload.jsx'))
+const Settings = lazy(() => import('./pages/Settings.jsx'))
+const SearchResults = lazy(() => import('./pages/SearchResults.jsx'))
+
+/** Centered loading fallback shown while a page chunk is fetched. */
+function PageFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+    </div>
+  )
+}
 
 const PAGE_META = {
   dashboard: { title: 'Dashboard' },
@@ -14,11 +29,21 @@ const PAGE_META = {
   records: { title: 'Attendance Records', subtitle: 'Detailed daily attendance log' },
   upload: { title: 'Upload Data', subtitle: 'Import monthly attendance CSV files' },
   settings: { title: 'Settings', subtitle: 'Configure attendance rules and thresholds' },
+  search: { title: 'Search Results', subtitle: 'Employee records and percentages' },
 }
 
 function App() {
   const [active, setActive] = useState('dashboard')
-  const { status, reportingMonth } = useAttendance()
+  const [reviewEmployeeId, setReviewEmployeeId] = useState(null)
+  const [globalQuery, setGlobalQuery] = useState('')
+  const { status, reportingMonth, crossFile, report } = useAttendance()
+
+  // Sidebar live status: flagged count badge + loaded dataset summary.
+  const flagCount = report?.flaggedEmployees?.length ?? 0
+  const statusText =
+    status === 'ready' && crossFile?.months?.length
+      ? `Loaded: ${crossFile.months.map(formatMonth).join(' · ')}`
+      : null
 
   // Dashboard subtitle reflects the actual reporting month once data is loaded.
   const baseMeta = PAGE_META[active] ?? PAGE_META.dashboard
@@ -29,58 +54,72 @@ function App() {
         ? status === 'ready' && reportingMonth
           ? `${formatMonth(reportingMonth)} — reporting month overview`
           : 'Upload attendance data to begin'
-        : baseMeta.subtitle,
+        : active === 'search' && globalQuery.trim()
+          ? `Records and percentages for "${globalQuery.trim()}"`
+          : baseMeta.subtitle,
+  }
+
+  // Header search: value/onChange keep the box editable; onSubmit jumps to the
+  // Search Results page with the query applied.
+  const headerSearch = {
+    value: globalQuery,
+    onChange: setGlobalQuery,
+    onSubmit: (q) => {
+      setGlobalQuery(q)
+      setActive('search')
+    },
   }
 
   const renderPage = () => {
-    switch (active) {
-      case 'dashboard':
-        return <Dashboard onNavigate={setActive} />
-      case 'review':
-        return (
-          <Placeholder
-            icon={AlertTriangle}
-            title="Employees Requiring Review"
-            description="The 50% late detection and drill-down review live here once the engine is wired in."
-            phase="Phase 5 & 8"
-          />
-        )
-      case 'employees':
-        return (
-          <Placeholder
-            icon={Users}
-            title="Employee Summaries"
-            description="Per-employee monthly statistics will appear here."
-            phase="Phase 4"
-          />
-        )
-      case 'records':
-        return (
-          <Placeholder
-            icon={Table2}
-            title="Attendance Records"
-            description="The full searchable, sortable attendance table."
-            phase="Phase 10"
-          />
-        )
-      case 'upload':
-        return <Upload onNavigate={setActive} />
-      case 'settings':
-        return (
-          <Placeholder
-            icon={Settings}
-            title="Attendance Settings"
-            description="Configure on-time cutoff, early-leave threshold, and working days."
-            phase="Phase 12"
-          />
-        )
-      default:
-        return <Dashboard onNavigate={setActive} />
-    }
+    const page = (() => {
+      switch (active) {
+        case 'dashboard':
+          return (
+            <Dashboard
+              onNavigate={setActive}
+              onSelectEmployee={setReviewEmployeeId}
+            />
+          )
+        case 'review':
+          return (
+            <Review
+              selectedEmployeeId={reviewEmployeeId}
+              onClearSelection={() => setReviewEmployeeId(null)}
+            />
+          )
+        case 'employees':
+          return <Employees />
+        case 'records':
+          return <Records />
+        case 'upload':
+          return <Upload onNavigate={setActive} />
+        case 'settings':
+          return <Settings />
+        case 'search':
+          return <SearchResults query={globalQuery} />
+        default:
+          return (
+            <Dashboard
+              onNavigate={setActive}
+              onSelectEmployee={setReviewEmployeeId}
+            />
+          )
+      }
+    })()
+
+    return <Suspense fallback={<PageFallback />}>{page}</Suspense>
   }
 
   return (
-    <AppShell active={active} onNavigate={setActive} title={meta.title} subtitle={meta.subtitle}>
+    <AppShell
+      active={active}
+      onNavigate={setActive}
+      title={meta.title}
+      subtitle={meta.subtitle}
+      flagCount={flagCount}
+      statusText={statusText}
+      headerSearch={headerSearch}
+    >
       {renderPage()}
     </AppShell>
   )

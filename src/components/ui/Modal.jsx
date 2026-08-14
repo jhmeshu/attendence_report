@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
@@ -39,7 +40,10 @@ export function Modal({
 
   if (!open) return null
 
-  return (
+  // Rendered through a portal so `position: fixed` is relative to the real
+  // viewport, not to any transformed/overflowed ancestor (e.g. the page-enter
+  // animation on <main>), which would otherwise shove the dialog off-screen.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
@@ -94,7 +98,8 @@ export function Modal({
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.97) } to { opacity: 1; transform: scale(1) } }
       `}</style>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

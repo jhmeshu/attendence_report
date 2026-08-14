@@ -1,10 +1,23 @@
-import { Menu, Search, Bell } from 'lucide-react'
+import { Menu, Search, Bell, X } from 'lucide-react'
 import { Button } from '../ui'
 
 /**
- * Header — top bar with mobile menu toggle, search, and actions.
+ * Header — top bar with mobile menu toggle, global employee search, and actions.
+ *
+ * `headerSearch` is `{ value, onChange, onSubmit }`. Typing updates `value`;
+ * pressing Enter or clicking the search button calls `onSubmit(value)`, which
+ * opens the Search Results page (see App.jsx).
  */
-export function Header({ title, subtitle, onMenuClick }) {
+export function Header({ title, subtitle, onMenuClick, headerSearch }) {
+  const query = headerSearch?.value ?? ''
+  const onQueryChange = headerSearch?.onChange
+  const onSubmit = headerSearch?.onSubmit
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    const q = query.trim()
+    if (q) onSubmit?.(q)
+  }
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-slate-200 bg-surface/80 px-4 backdrop-blur-md lg:px-6">
       <button
@@ -25,14 +38,33 @@ export function Header({ title, subtitle, onMenuClick }) {
       </div>
 
       {/* Search */}
-      <div className="relative hidden md:block">
+      <form onSubmit={handleSubmit} className="relative" role="search">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
         <input
           type="text"
-          placeholder="Search employees..."
-          className="h-9 w-64 rounded-lg border border-slate-200 bg-surface-subtle pl-9 pr-3 text-sm text-ink placeholder:text-ink-faint outline-none transition-colors focus:border-brand focus:bg-surface focus:ring-2 focus:ring-brand-100"
+          value={query}
+          onChange={(e) => onQueryChange?.(e.target.value)}
+          placeholder="Search by name or employee ID…"
+          className="h-9 w-40 rounded-lg border border-slate-200 bg-surface-subtle py-0 pl-9 pr-9 text-sm text-ink placeholder:text-ink-faint outline-none transition-colors focus:border-brand focus:bg-surface focus:ring-2 focus:ring-brand-100 sm:w-64"
         />
-      </div>
+        {query && (
+          <button
+            type="button"
+            onClick={() => onQueryChange?.('')}
+            className="absolute right-10 top-1/2 -translate-y-1/2 rounded p-0.5 text-ink-faint hover:text-ink-soft"
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+        <button
+          type="submit"
+          className="absolute right-1.5 top-1/2 h-7 w-7 -translate-y-1/2 rounded-lg text-ink-faint transition-colors hover:bg-surface-muted hover:text-ink-soft"
+          aria-label="Search"
+        >
+          <Search className="mx-auto h-4 w-4" />
+        </button>
+      </form>
 
       <Button variant="secondary" size="icon" aria-label="Notifications">
         <Bell className="h-[18px] w-[18px]" />

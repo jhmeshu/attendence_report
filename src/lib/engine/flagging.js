@@ -1,5 +1,18 @@
 import { DEFAULT_RULES } from './config.js'
 
+/** Fold a department string into its normalized match key. */
+const normDept = (d) => (d ?? '').trim().toLowerCase()
+
+/**
+ * True when a department is excluded from Needs Review flagging
+ * (see DEFAULT_RULES.reviewExcludedDepartments).
+ */
+export function isExcludedReviewDepartment(department, excluded = DEFAULT_RULES.reviewExcludedDepartments) {
+  const key = normDept(department)
+  if (!key || !excluded?.length) return false
+  return excluded.map(normDept).includes(key)
+}
+
 /**
  * Phase 5 — 50% Late Detection.
  *
@@ -22,6 +35,7 @@ import { DEFAULT_RULES } from './config.js'
  */
 export function detectHighLate(summaries, options = {}) {
   const threshold = options.threshold ?? DEFAULT_RULES.highLateThreshold
+  const excluded = options.excludedDepartments ?? DEFAULT_RULES.reviewExcludedDepartments
 
   // Reporting month = explicit arg, else the latest month in the data.
   const reportingMonth =
@@ -38,6 +52,7 @@ export function detectHighLate(summaries, options = {}) {
   const flagged = summaries
     .filter((s) => s.month === reportingMonth)
     .filter((s) => s.latePct > threshold)
+    .filter((s) => !isExcludedReviewDepartment(s.department, excluded))
     .map((s) => ({
       employeeId: s.employeeId,
       name: s.name,

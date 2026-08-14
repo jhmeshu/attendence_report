@@ -21,6 +21,10 @@ export const DEFAULT_RULES = {
   // Late detection threshold for Phase 5 flagging
   highLateThreshold: 50, // Late % > 50 → flagged
 
+  // Departments never flagged for Needs Review regardless of late rate.
+  // Values are matched case-insensitively (trim + lowercase).
+  reviewExcludedDepartments: ['bkash', 'exabyting remote'],
+
   // How a department is categorized when an employee has NO clock-in on a
   // working day. See DEPARTMENT_CATEGORIES below.
 }

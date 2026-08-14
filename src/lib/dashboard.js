@@ -92,11 +92,68 @@ export function deriveTrend(report) {
 }
 
 /**
- * Late-arrival distribution buckets for the reporting month.
+ * Daily attendance calendar for the reporting month.
+ * One cell per day with attendance % and late arrivals, so management gets a
+ * quick visual overview of attendance by date (doc Phase 7 — Analytics chart).
+ *
+ * @returns {{ month: string, days: object[] }}
+ */
+export function deriveCalendar(report) {
+  const { records, reportingMonth } = report
+  if (!reportingMonth) return { month: null, days: [] }
+
+  const byDate = new Map()
+  for (const r of records) {
+    if (r.month !== reportingMonth) continue
+    if (!byDate.has(r.date)) {
+      byDate.set(r.date, { scheduled: 0, present: 0, weekendWork: 0, late: 0 })
+    }
+    const d = byDate.get(r.date)
+    if (r.isWeekend) {
+      if (r.isWeekendWork) d.weekendWork++
+      continue
+    }
+    d.scheduled++
+    if (r.isPresent) d.present++
+    if (r.isLate) d.late++
+  }
+
+  const [y, m] = reportingMonth.split('-').map(Number)
+  const daysInMonth = new Date(y, m, 0).getDate()
+
+  // Use the configured weekend (Settings may change it away from Fri/Sat).
+  const weekendSet = new Set(report.rules?.weekendDays ?? DEFAULT_WEEKEND_DAYS)
+
+  const days = []
+  for (let day = 1; day <= daysInMonth; day++) {
+    const iso = `${reportingMonth}-${String(day).padStart(2, '0')}`
+    const d = byDate.get(iso)
+    days.push({
+      date: iso,
+      day,
+      weekday: new Date(y, m - 1, day).getDay(),
+      isWeekend: weekendSet.has(new Date(y, m - 1, day).getDay()),
+      scheduled: d?.scheduled ?? 0,
+      present: d?.present ?? 0,
+      weekendWork: d?.weekendWork ?? 0,
+      late: d?.late ?? 0,
+      attendancePct: pct(d?.present ?? 0, d?.scheduled ?? 0),
+    })
+  }
+
+  return { month: reportingMonth, days }
+}
+
+const DEFAULT_WEEKEND_DAYS = [5, 6] // Friday, Saturday
+
+/**
+ * Late-arrival distribution buckets + headline stats for the reporting month.
+ *
+ * @returns {{ stats: object, buckets: object[] }}
  */
 export function deriveLateAnalysis(report) {
   const { records, reportingMonth } = report
-  if (!reportingMonth) return []
+  if (!reportingMonth) return { stats: emptyLateStats(), buckets: [] }
 
   const buckets = [
     { range: '0–10 min', min: 1, max: 10, count: 0 },
@@ -106,14 +163,30 @@ export function deriveLateAnalysis(report) {
     { range: '60+ min', min: 61, max: Infinity, count: 0 },
   ]
 
+  let totalLate = 0
+  let totalLateMinutes = 0
+  let scheduled = 0
+
   for (const r of records) {
-    if (r.month !== reportingMonth || !r.isLate) continue
+    if (r.month !== reportingMonth || r.isWeekend) continue
+    scheduled++
+    if (!r.isLate) continue
+    totalLate++
+    totalLateMinutes += r.lateMinutes || 0
     const m = r.lateMinutes || 0
     const b = buckets.find((bk) => m >= bk.min && m <= bk.max)
     if (b) b.count++
   }
 
-  return buckets.map(({ range, count }) => ({ range, count }))
+  return {
+    stats: {
+      totalLate,
+      avgLateMinutes: totalLate > 0 ? Math.round(totalLateMinutes / totalLate) : 0,
+      lateFrequencyPct:
+        scheduled > 0 ? Math.round((totalLate / scheduled) * 1000) / 10 : 0,
+    },
+    buckets: buckets.map(({ range, count }) => ({ range, count })),
+  }
 }
 
 /**
@@ -206,4 +279,8 @@ function emptyKpis() {
     },
     statusBreakdown: [],
   }
+}
+
+function emptyLateStats() {
+  return { totalLate: 0, avgLateMinutes: 0, lateFrequencyPct: 0 }
 }

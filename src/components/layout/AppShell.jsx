@@ -6,7 +6,7 @@ import { Header } from './Header.jsx'
  * AppShell — owns navigation state and wires Sidebar + Header + content.
  * Pages are passed as a render-prop keyed off `active`.
  */
-export function AppShell({ active, onNavigate, title, subtitle, children }) {
+export function AppShell({ active, onNavigate, title, subtitle, flagCount = 0, statusText, headerSearch, children }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   return (
@@ -16,6 +16,8 @@ export function AppShell({ active, onNavigate, title, subtitle, children }) {
         onNavigate={onNavigate}
         mobileOpen={mobileNavOpen}
         onMobileClose={() => setMobileNavOpen(false)}
+        flagCount={flagCount}
+        statusText={statusText}
       />
 
       <div className="lg:pl-64">
@@ -23,8 +25,12 @@ export function AppShell({ active, onNavigate, title, subtitle, children }) {
           title={title}
           subtitle={subtitle}
           onMenuClick={() => setMobileNavOpen(true)}
+          headerSearch={headerSearch}
         />
-        <main className="mx-auto max-w-7xl px-4 py-6 lg:px-6 lg:py-8">
+        <main
+          key={active}
+          className="animate-page mx-auto max-w-7xl px-4 py-6 lg:px-6 lg:py-8"
+        >
           {children}
         </main>
       </div>

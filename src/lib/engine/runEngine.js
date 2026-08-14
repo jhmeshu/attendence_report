@@ -1,5 +1,9 @@
 import { processRecord } from './processRecord.js'
-import { DEFAULT_RULES, WEEKEND_NAMES } from './config.js'
+import { DEFAULT_RULES } from './config.js'
+
+const DAY_NAMES = [
+  'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+]
 
 /**
  * Run the attendance engine over a full dataset.
@@ -15,9 +19,15 @@ import { DEFAULT_RULES, WEEKEND_NAMES } from './config.js'
 export function runEngine(records, ruleOverrides = {}) {
   const rules = {
     ...DEFAULT_RULES,
-    _weekendNames: WEEKEND_NAMES,
     ...ruleOverrides,
   }
+
+  // The Weekday column uses names ("Friday"), so derive the name set from the
+  // numeric weekendDays config. Keeps both the weekday-name and date fallback
+  // paths consistent when Settings (Phase 12) changes the weekend.
+  rules._weekendNames = (rules.weekendDays ?? DEFAULT_RULES.weekendDays)
+    .map((n) => DAY_NAMES[n])
+    .filter(Boolean)
 
   const processed = records.map((r) => processRecord(r, rules))
 

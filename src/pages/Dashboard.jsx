@@ -10,6 +10,7 @@ import {
   Eye,
   UploadCloud,
   TrendingDown,
+  Timer,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -27,6 +28,8 @@ import {
 } from 'recharts'
 
 import { Card, Button, Badge, Table, StatCard, EmptyState } from '../components/ui'
+import { AttendanceCalendar } from '../components/AttendanceCalendar'
+import { HistoricalNotice } from '../components/HistoricalNotice'
 import { statusToTone } from '../lib/statusTone'
 import { useAttendance } from '../store/attendanceContext'
 import { formatMonth } from '../lib/csv'
@@ -55,7 +58,21 @@ function ChartTooltip({ active, payload, label, suffix = '' }) {
   )
 }
 
-export function Dashboard({ onNavigate }) {
+function MiniStat({ icon: Icon, label, value, tone }) {
+  return (
+    <div className="rounded-lg bg-surface-subtle p-3 text-center">
+      <span
+        className={`mx-auto flex h-8 w-8 items-center justify-center rounded-lg ${tone}`}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <p className="mt-2 text-lg font-bold tracking-tight text-ink">{value}</p>
+      <p className="text-[11px] font-medium text-ink-muted">{label}</p>
+    </div>
+  )
+}
+
+export function Dashboard({ onNavigate, onSelectEmployee }) {
   const { status, report, dashboard } = useAttendance()
 
   // Empty state — no CSV uploaded yet.
@@ -74,7 +91,7 @@ export function Dashboard({ onNavigate }) {
     )
   }
 
-  const { kpis, statusBreakdown, trend, lateAnalysis, alerts } = dashboard
+  const { kpis, statusBreakdown, trend, calendar, lateAnalysis, alerts } = dashboard
   const reportingLabel = formatMonth(report.reportingMonth)
 
   // Recent records: latest 8 processed records in the reporting month.
@@ -91,6 +108,8 @@ export function Dashboard({ onNavigate }) {
         Reporting month:{' '}
         <span className="font-semibold text-ink">{reportingLabel}</span>
       </div>
+
+      <HistoricalNotice months={report.months} reportingMonth={report.reportingMonth} />
 
       {/* KPI cards */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-5">
@@ -189,45 +208,15 @@ export function Dashboard({ onNavigate }) {
         </Card>
       </section>
 
-      {/* Alerts + Late analysis */}
+      {/* Attendance calendar + Late analysis */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <Card.Header>
-            <Card.Title>Management Alerts</Card.Title>
-            {alerts.length > 0 && (
-              <Badge tone="danger" dot>
-                {alerts.length} active
-              </Badge>
-            )}
+            <Card.Title>Attendance Calendar — {reportingLabel}</Card.Title>
+            <Badge tone="info">day-by-day attendance count</Badge>
           </Card.Header>
-          <Card.Body className="space-y-3">
-            {alerts.length === 0 ? (
-              <div className="flex items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3.5">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                <p className="text-sm text-emerald-700">
-                  No alerts — all attendance metrics within normal range.
-                </p>
-              </div>
-            ) : (
-              alerts.map((a, i) => {
-                const meta = ALERT_META[a.tone]
-                const Icon = meta.icon
-                return (
-                  <div
-                    key={i}
-                    className="flex items-start gap-3 rounded-lg border border-slate-100 bg-surface-subtle p-3.5"
-                  >
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.chip}`}>
-                      <Icon className="h-[18px] w-[18px]" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-ink">{a.title}</p>
-                      <p className="text-xs text-ink-muted">{a.detail}</p>
-                    </div>
-                  </div>
-                )
-              })
-            )}
+          <Card.Body>
+            <AttendanceCalendar month={calendar.month} days={calendar.days} />
           </Card.Body>
         </Card>
 
@@ -236,8 +225,28 @@ export function Dashboard({ onNavigate }) {
             <Card.Title>Late Arrival Analysis</Card.Title>
           </Card.Header>
           <Card.Body>
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={lateAnalysis} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+            <div className="grid grid-cols-3 gap-3">
+              <MiniStat
+                icon={Clock}
+                label="Total late"
+                value={lateAnalysis.stats.totalLate}
+                tone="bg-amber-50 text-amber-600"
+              />
+              <MiniStat
+                icon={Timer}
+                label="Avg duration"
+                value={`${lateAnalysis.stats.avgLateMinutes}m`}
+                tone="bg-violet-50 text-violet-600"
+              />
+              <MiniStat
+                icon={TrendingDown}
+                label="Frequency"
+                value={`${lateAnalysis.stats.lateFrequencyPct}%`}
+                tone="bg-brand-50 text-brand"
+              />
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={lateAnalysis.buckets} margin={{ top: 12, right: 8, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
                 <XAxis dataKey="range" tick={{ fontSize: 10, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} />
@@ -245,6 +254,51 @@ export function Dashboard({ onNavigate }) {
                 <Bar dataKey="count" name="Late arrivals" fill="#008DFF" radius={[4, 4, 0, 0]} maxBarSize={36} />
               </BarChart>
             </ResponsiveContainer>
+          </Card.Body>
+        </Card>
+      </section>
+
+      {/* Management alerts */}
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-3">
+          <Card.Header>
+            <Card.Title>Management Alerts</Card.Title>
+            {alerts.length > 0 && (
+              <Badge tone="danger" dot>
+                {alerts.length} active
+              </Badge>
+            )}
+          </Card.Header>
+          <Card.Body>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+              {alerts.length === 0 ? (
+                <div className="flex items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3.5 lg:col-span-3">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  <p className="text-sm text-emerald-700">
+                    No alerts — all attendance metrics within normal range.
+                  </p>
+                </div>
+              ) : (
+                alerts.map((a, i) => {
+                  const meta = ALERT_META[a.tone]
+                  const Icon = meta.icon
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 rounded-lg border border-slate-100 bg-surface-subtle p-3.5"
+                    >
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.chip}`}>
+                        <Icon className="h-[18px] w-[18px]" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-ink">{a.title}</p>
+                        <p className="text-xs text-ink-muted">{a.detail}</p>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
           </Card.Body>
         </Card>
       </section>
@@ -292,7 +346,10 @@ export function Dashboard({ onNavigate }) {
                         variant="subtle"
                         size="sm"
                         rightIcon={Eye}
-                        onClick={() => onNavigate?.('review')}
+                        onClick={() => {
+                          onSelectEmployee?.(e.employeeId)
+                          onNavigate?.('review')
+                        }}
                       >
                         View
                       </Button>

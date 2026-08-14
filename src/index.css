@@ -31,3 +31,27 @@
     background: transparent;
   }
 }
+
+@layer utilities {
+  /* Page enter transition — subtle fade (no transform: an ancestor transform
+     would become the containing block for fixed elements like the modal). */
+  @keyframes pageIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .animate-page {
+    animation: pageIn 220ms ease-out both;
+  }
+
+  /* Respect reduced-motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-page,
+    .animate-spin {
+      animation: none !important;
+    }
+  }
+}
