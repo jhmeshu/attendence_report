@@ -31,6 +31,7 @@ const SORT_FIELDS = {
   earlyLeave: { label: 'Early Leave' },
   avgLateMinutes: { label: 'Avg Late' },
   totalWorkedHours: { label: 'Total Hours' },
+  avgWorkedHours: { label: 'Avg Hours' },
   weekendWork: { label: 'Wknd Work' },
 }
 
@@ -45,6 +46,8 @@ function sortValue(s, key) {
       return s.department?.toLowerCase() ?? ''
     case 'totalWorkedHours':
       return s.totalWorkedMinutes ?? -1
+    case 'avgWorkedHours':
+      return s.avgWorkedMinutes ?? -1
     case 'avgLateMinutes':
       return s.avgLateMinutes ?? -1
     case 'attendancePct':
@@ -139,7 +142,7 @@ export function Employees() {
       'Employee', 'Employee ID', 'Department', 'Month', 'Scheduled Days',
       'Present', 'Absent', 'No Record', 'Late Days', 'Early Leave',
       'Weekend Work', 'Attendance %', 'Late %', 'Early Leave %',
-      'Avg Late (min)', 'Total Hours',
+      'Avg Late (min)', 'Total Hours', 'Avg Hours',
     ]
     const rows = sorted.map((s) => [
       s.name,
@@ -158,6 +161,7 @@ export function Employees() {
       s.earlyLeavePct,
       s.avgLateMinutes,
       s.totalWorkedHours ?? '',
+      s.avgWorkedHours ?? '',
     ])
     const monthTag = month === 'all' ? 'all-months' : month
     downloadCsv(`employee-summaries-${monthTag}.csv`, toCsv(headers, rows))
@@ -333,6 +337,7 @@ export function Employees() {
                           {s.avgLateMinutes ? `${s.avgLateMinutes}m` : '0m'}
                         </Table.Td>
                         <Table.Td align="right">{s.totalWorkedHours ?? '—'}</Table.Td>
+                        <Table.Td align="right">{s.avgWorkedHours ?? '—'}</Table.Td>
                         <Table.Td align="right">{s.weekendWork}</Table.Td>
                       </Table.Row>
                     )
